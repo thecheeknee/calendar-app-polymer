@@ -1,0 +1,31 @@
+{
+  "entrypoint": "index.html",
+  "shell": "src/calendar-app.html",
+  "fragments": [
+    "src/calendar-view.html",
+    "src/add-event.html",
+    "src/view404.html"
+  ],
+  "sources": [
+    "src/**/*",
+    "images/**/*"
+  ],
+  "extraDependencies": [
+    "manifest.json",
+    "bower_components/webcomponentsjs/*.js"
+  ],
+  "lint": {
+    "rules": ["polymer-2"]
+  },
+  "builds": [
+    {
+      "preset": "es5-bundled"
+    },
+    {
+      "preset": "es6-bundled"
+    },
+    {
+      "preset": "es6-unbundled"
+    }
+  ]
+}

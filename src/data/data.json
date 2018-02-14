@@ -1,0 +1,48 @@
+[
+    {
+        "month":"January",
+        "events":{
+            "14":{
+                "date":14,
+                "event":"Pongal",
+                "status":"Optional Holiday",
+                "info":"Pongal is a Tamil Harvest Festival. It is celebrated with feasts and large scale events."
+            },
+            "25":{
+                "date":25,
+                "event":"Karnataka Bandh",
+                "status":"State Holiday",
+                "info":"Government has issued a statewide bandh to support the peaceful rally by Farmers"
+            },
+            "26":{
+                "date":26,
+                "event":"Republic Day",
+                "status":"National Holiday",
+                "info":"The country celebrates it's 60th constitutional day. Don't miss the parade near Vidhan Soudha"
+            }
+        }
+    },
+    {
+        "month":"February",
+        "events":{
+            "11": {
+                "date":11,
+                "event":"Shivaratri",
+                "status":"Optional Holiday",
+                "info":"The overnight celebration for Lord Shiva marks the close of the Winter Solistice. People fast until the next day"
+            },
+            "14":{
+                "date":14,
+                "event":"Valentines Day",
+                "status":"Celebration at work",
+                "info":"The internationak celebration of Love has a lot of activities across the city. Do check them out and celebrate with your loved ones!"
+            },
+            "26":{
+                "date":19,
+                "event":"Shivaji Jayanti",
+                "status":"State Holiday",
+                "info":"Celebrating the birth of the great Maratha who bought the western part of India together."
+            }
+        }
+    }
+]

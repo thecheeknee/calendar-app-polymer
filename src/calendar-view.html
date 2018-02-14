@@ -1,0 +1,292 @@
+<!--
+@license
+Copyright (c) 2016 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/iron-flex-layout/iron-flex-layout-classes.html">
+<link rel="import" href="../bower_components/paper-tooltip/paper-tooltip.html">
+<link rel="import" href="../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../bower_components/iron-icons/iron-icons.html">
+<link rel="import" href="../bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../bower_components/paper-listbox/paper-listbox.html">
+<link rel="import" href="../bower_components/paper-item/paper-item.html">
+<link rel="import" href="../bower_components/neon-animation/web-animations.html">
+<link rel="import" href="../bower_components/promise-polyfill/promise-polyfill-lite.html">
+<link rel="import" href="../bower_components/iron-ajax/iron-ajax.html">
+<link rel="import" href="shared-styles.html">
+
+<dom-module id="calendar-view">
+  <template>
+    <style include="shared-styles iron-flex iron-flex-alignment">
+      :host {
+        display: block;
+
+        padding: 10px;
+      }
+      .flex-horizontal {
+        @apply --layout-horizontal;
+      }
+      .flexchild {
+        @apply --layout-flex;
+      }
+      .block{
+        margin:5px; border: 1px solid #ffffff; background: black; cursor: pointer; color:#ffffff; text-align: center; height:40px; line-height: 40px;
+      }
+      .marked{
+        border:1px solid #00ff00; color:#00ff00;
+      }
+      paper-item{
+        padding:0;
+        margin:0;
+      }
+      .date{
+        display:inline-block;
+        width:50px;
+        line-height: 50px;
+        height:50px;
+        font-weight: bold;
+        color:blueviolet;
+        text-align: center;
+        border-right:1px solid #f0f0f0;
+      }
+      .event-info{
+        height:50px;
+        display: inline-block;
+        padding:8px 10px 2px 10px;
+      }
+      .event-info h3{
+        font-size: 18px;
+        font-weight: bold;
+        line-height: normal;
+        padding:0px; margin:0px;
+      }
+      .event-info h4{
+        font-size:14px;
+        font-weight: normal;
+        padding: 0;
+        margin: 0; line-height: normal;
+      }
+
+    </style>
+    <!-- include classes in the main document -->
+    <div class="float-block">
+      <div class="card dark">
+        <iron-ajax auto url="src/data/data.json" handle-as="json" on-response="_init" debounce-duration="300"></iron-ajax>
+        <div class="circle">{{monthName.shortName}}</div>
+        <h1>Viewing: {{monthName.fullName}}</h1>
+        <div class="clear"></div>
+        <div class="container flex-horizontal">
+          <div class="flexchild hidden-xs">
+            <div class="block">Week #</div>
+          </div>
+          <template is="dom-repeat" items="{{days}}">
+              <div class="flexchild">
+                <div class="block hidden-xs">{{item}}</div>
+                <div class="block visible-xs">{{item.0}}</div>
+              </div>
+          </template>
+        </div>
+        
+        <template is="dom-repeat" items="{{weeks}}" render mutable-data>
+          <div class="clear"></div>
+          <div class="container flex-horizontal">
+            <div class="flexchild hidden-xs">
+              <div class="block">{{item.name}}</div>
+            </div>
+            <template is="dom-repeat" items="{{item.days}}" render mutable-data>
+              <div class="flexchild">
+                <div class$="block weekday {{item.1}}" on-click="checkevent">{{item.0}}</div>
+              </div>
+            </template>
+          </div>
+        </template>
+        <div class="clear"></div>
+      </div>
+    </div>
+    
+    <div class="float-block">
+      <div class="card hidden-xs">
+        <div class="circle" hidden$="{{eventdetails.hide}}">
+          {{eventdetails.date}}
+        </div>
+        <h1 hidden$="{{eventdetails.hide}}">{{eventdetails.name}}</h1>
+        <p hidden$="{{eventdetails.hide}}">{{eventdetails.info}}</p>
+      </div>
+
+      <div class="card">
+        <h1>List of Events for {{eventlist.month}}</h1>
+        <paper-listbox selected="1">
+          <template is="dom-repeat" items="{{eventlist.events}}" render mutable-data>
+            <paper-item on-click="viewDetails">
+              <div class="date"> {{item.date}}</div>
+              <div class="event-info">
+                <h3>{{item.event}}</h3>
+                <h4>{{item.status}}</h4>
+              </div>
+              <div class="clear">&nbsp;</div>
+            </paper-item>
+          </template>
+        </paper-listbox>
+        
+      </div>
+    </div>
+
+  </template>
+
+  <script>
+    class CalendarView extends Polymer.Element {
+      static get is() { return 'calendar-view'; }
+      static get properties(){
+        return {
+          monthName:{
+            type:Object,
+            value:{
+              shortName:1,
+              fullName:'January'
+            }
+          },
+          monthlist:{
+            type:Array,
+            value:['January','February','March','April','May','June','July','August','September','October','November','December']
+          },
+          days:{
+            type:Array,
+            value:['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+          },
+          weeks:{
+            type:Array,
+            value:[]
+          },
+          dataevents:{
+            type:Object,
+            value:{}
+          },
+          eventlist:{
+            type:Object,
+            value:{}
+          },
+          eventdetails:{
+            type:Object,
+            value:{
+              hide:true
+            }
+          }
+        }
+      }
+      _init(e){
+        
+        var d = new Date();
+        var shortName = d.getMonth()+1;
+        var fullName = this.monthlist[d.getMonth()];
+        this.monthName = {
+          shortName:shortName,
+          fullName:fullName
+        }
+        this.dataevents = e.detail.__data.response;
+        this.fetchEvents(this.dataevents[d.getMonth()]);
+        this.createMonth(d.getMonth(), d.getFullYear());
+      }
+      createMonth(month,year){
+        var totalDays, emptyStart, tempStartDate, dateCounter, dayCounter, weekCounter, weekNew, weekOld;
+        var d= new Date(year, month+1, 0);
+        totalDays = d.getDate();
+
+        //Find when the first day of the month starts
+        var tempStartDate = new Date(month+1 + ' 1 ,' + year);
+        var emptyStart = 7 - tempStartDate.getDay();
+        console.log(emptyStart);
+
+        
+        dateCounter = 1;//First day of the month (1st)
+        dayCounter = 0;//First day of the week (Monday)
+        weekCounter =0;
+        weekNew ={
+          name:String,
+          days:[]
+        }
+        //debugger;
+        while(dateCounter<=totalDays){
+
+          //Create entire month's calendar
+
+          if(dateCounter==1){ //If start of the month. Create a new week and add to Week object
+            
+            weekNew.name='wk '+weekCounter;
+            for(var j=0; j<emptyStart; j++){
+              weekNew.days.push([null,null]);
+              dayCounter ++;
+            }
+          }
+          //Push date into Week Array
+          var eventalert = null;
+          if(this.dataevents[month].events[dateCounter]!==undefined){
+            //debugger;
+            console.log('Event Found for '+dateCounter);
+            console.log(this.dataevents[month].events[dateCounter]);
+            eventalert = 'marked';
+          }
+          weekNew.days.push([dateCounter,eventalert]);
+
+          if( dayCounter==6 || dateCounter==totalDays ){ //Sunday Reached or Month End reached. Add to date array Reset Date 
+            //check if month end reached. Add pending blank spaces
+            if(dateCounter==totalDays && dayCounter<6){
+              for(var i=6; i>dayCounter;i--){
+                weekNew.days.push([null,null]);
+              }
+            }
+            this.push('weeks',weekNew);
+            weekCounter++;
+
+            //clear week object
+            weekNew ={
+              name:String,
+              days:[]
+            }
+            weekNew.name='wk '+weekCounter;
+            dateCounter ++;
+            dayCounter=0;
+            
+          }else{
+            dateCounter ++;
+            dayCounter ++;
+          }
+          
+        }
+        
+      }
+      checkdetails(e){
+        console.log(e.model.item);
+      }
+      viewDetails(e){
+        var event = e.model.item
+        this.eventdetails ={
+          show : false,
+          date : event.date,
+          name : event.event,
+          info : event.info
+        }
+      }
+      fetchEvents(data){
+        var eventsArray = new Array();
+        console.log(data);
+        for(var key in data.events) {
+          var eventObj = new Object( data.events[key] );
+          eventsArray.push(eventObj);
+        }
+        this.eventlist ={
+          month:data.month,
+          events:eventsArray
+        }
+        console.log(eventsArray);
+      }
+    }
+
+    window.customElements.define(CalendarView.is, CalendarView);
+  </script>
+</dom-module>
