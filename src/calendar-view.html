@@ -10,15 +10,15 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
 <link rel="import" href="../bower_components/polymer/polymer-element.html">
 <link rel="import" href="../bower_components/iron-flex-layout/iron-flex-layout-classes.html">
-<link rel="import" href="../bower_components/paper-tooltip/paper-tooltip.html">
 <link rel="import" href="../bower_components/paper-button/paper-button.html">
 <link rel="import" href="../bower_components/iron-icons/iron-icons.html">
-<link rel="import" href="../bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../bower_components/paper-dropdown-menu/paper-dropdown-menu.html">
 <link rel="import" href="../bower_components/paper-listbox/paper-listbox.html">
 <link rel="import" href="../bower_components/paper-item/paper-item.html">
 <link rel="import" href="../bower_components/neon-animation/web-animations.html">
 <link rel="import" href="../bower_components/promise-polyfill/promise-polyfill-lite.html">
 <link rel="import" href="../bower_components/iron-ajax/iron-ajax.html">
+<link rel="import" href="../bower_components/app-storage/app-localstorage/app-localstorage-document.html">
 <link rel="import" href="shared-styles.html">
 
 <dom-module id="calendar-view">
@@ -72,6 +72,12 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         padding: 0;
         margin: 0; line-height: normal;
       }
+      .month-select{
+        float: right;
+        padding: 5px;
+        background: #ddd;
+        border-radius: 9px;
+      }
 
     </style>
     <!-- include classes in the main document -->
@@ -79,6 +85,15 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       <div class="card dark">
         <iron-ajax auto url="src/data/data.json" handle-as="json" on-response="_init" debounce-duration="300"></iron-ajax>
         <div class="circle">{{monthName.shortName}}</div>
+        <div class="month-select">
+          <paper-dropdown-menu label="Month" on-iron-select="_changeMonth">
+            <paper-listbox slot="dropdown-content" name="Month">
+              <template is="dom-repeat" items="{{monthlist}}">
+                <paper-item value="[[index]]">{{item}}</paper-item>
+              </template>
+            </paper-listbox>
+          </paper-dropdown-menu>
+        </div>
         <h1>Viewing: {{monthName.fullName}}</h1>
         <div class="clear"></div>
         <div class="container flex-horizontal">
@@ -101,7 +116,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
             </div>
             <template is="dom-repeat" items="{{item.days}}" render mutable-data>
               <div class="flexchild">
-                <div class$="block weekday {{item.1}}" on-click="checkevent">{{item.0}}</div>
+                <div class$="block weekday {{item.1}}" on-click="checkdetails">{{item.0}}</div>
               </div>
             </template>
           </div>
@@ -111,12 +126,20 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
     </div>
     
     <div class="float-block">
-      <div class="card hidden-xs">
-        <div class="circle" hidden$="{{eventdetails.hide}}">
+      <div class="card">
+        <div class="circle">
           {{eventdetails.date}}
         </div>
-        <h1 hidden$="{{eventdetails.hide}}">{{eventdetails.name}}</h1>
-        <p hidden$="{{eventdetails.hide}}">{{eventdetails.info}}</p>
+        <div class="closecard" on-click="hideEvent">
+          <iron-icon icon="my-icons:close"></iron-icon>
+        </div>
+        <h1>{{eventdetails.name}}</h1>
+        <strong>{{eventdetails.status}}</strong>
+        <p>{{eventdetails.info}}</p>
+        <app-localstorage-document key="eventDate" data="{{eventdetails.date}}"></app-localstorage-document>
+        <app-localstorage-document key="eventDetails" data="{{eventdetails}}"></app-localstorage-document>
+        <paper-button hidden$="{{eventdetails.hide}}" on-click="openEventEditor" raised>Edit/Delete</paper-button>
+        <paper-button hidden$="{{eventdetails.show}}" on-click="openEventEditor" raised>Create</paper-button>
       </div>
 
       <div class="card">
@@ -174,7 +197,8 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           eventdetails:{
             type:Object,
             value:{
-              hide:true
+              hide:true,
+              show:true,
             }
           }
         }
@@ -182,25 +206,44 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       _init(e){
         
         var d = new Date();
+        this.dataevents = e.detail.__data.response;
+        console.log();
+        this.triggerCalendarChange(d);
+      }
+      _changeMonth(e){
+        var monthid = e.target.selectedItem.value;
+        var d = new Date();
+        d.setMonth(monthid);
+        this.triggerCalendarChange(d);
+      }
+      triggerCalendarChange(d){
         var shortName = d.getMonth()+1;
         var fullName = this.monthlist[d.getMonth()];
         this.monthName = {
           shortName:shortName,
           fullName:fullName
         }
-        this.dataevents = e.detail.__data.response;
-        this.fetchEvents(this.dataevents[d.getMonth()]);
+        if( this.dataevents[d.getMonth()]!==undefined ){
+          this.fetchEvents(this.dataevents[d.getMonth()]);
+        }else{
+          this.eventlist ={
+            month:this.monthlist[d.getMonth()],
+            events:[]
+          }
+        }
         this.createMonth(d.getMonth(), d.getFullYear());
+        this.hideEvent(d);
       }
       createMonth(month,year){
         var totalDays, emptyStart, tempStartDate, dateCounter, dayCounter, weekCounter, weekNew, weekOld;
         var d= new Date(year, month+1, 0);
         totalDays = d.getDate();
+        //clear the week array
+        this.weeks = [];
 
         //Find when the first day of the month starts
         var tempStartDate = new Date(month+1 + ' 1 ,' + year);
         var emptyStart = 7 - tempStartDate.getDay();
-        console.log(emptyStart);
 
         
         dateCounter = 1;//First day of the month (1st)
@@ -225,10 +268,10 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           }
           //Push date into Week Array
           var eventalert = null;
-          if(this.dataevents[month].events[dateCounter]!==undefined){
+          if(this.dataevents[month]!==undefined && this.dataevents[month].events[dateCounter]!==undefined){
             //debugger;
-            console.log('Event Found for '+dateCounter);
-            console.log(this.dataevents[month].events[dateCounter]);
+            //console.log('Event Found for '+dateCounter);
+            //console.log(this.dataevents[month].events[dateCounter]);
             eventalert = 'marked';
           }
           weekNew.days.push([dateCounter,eventalert]);
@@ -261,20 +304,52 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         
       }
       checkdetails(e){
-        console.log(e.model.item);
+        //console.log(e.model.item);
+        if(e.model.item[0]===null){
+          this.hideEvent(e);
+        }
+        else if( e.model.item[1] ===null && e.model.item[0]!==null ){
+          //no event on this date. Provide option to create an event
+          this.eventdetails={
+            hide : true,
+            show:false,
+            date : e.model.item[0],
+            month: this.eventlist.month
+          }
+        }else{
+          var events = this.eventlist.events;
+          for( var i=0; i<events.length; i++){
+            if(events[i].date === e.model.item[0]){
+              //debugger;
+              //console.log(events[i]);
+              var ev ={
+                model:{
+                  item:events[i]
+                }
+              }
+              this.viewDetails(ev);
+              break;
+            }
+          }
+        }
+        //console.log(this.eventdetails);
       }
       viewDetails(e){
         var event = e.model.item
+        console.log(event);
         this.eventdetails ={
-          show : false,
+          hide : false,
+          show : true,
           date : event.date,
           name : event.event,
-          info : event.info
+          info : event.info,
+          status: event.status,
+          month: this.eventlist.month
         }
       }
       fetchEvents(data){
         var eventsArray = new Array();
-        console.log(data);
+        //console.log(data);
         for(var key in data.events) {
           var eventObj = new Object( data.events[key] );
           eventsArray.push(eventObj);
@@ -283,7 +358,18 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           month:data.month,
           events:eventsArray
         }
-        console.log(eventsArray);
+        //console.log(eventsArray);
+      }
+      hideEvent(e){
+        this.eventdetails={
+          hide:true,
+          show:true
+        }
+        this.eventdetails = JSON.parse(JSON.stringify(this.eventdetails));
+      }
+      openEventEditor(){
+        //console.log(this.eventdetails);
+        window.location = this.rootPath + 'add-event';
       }
     }
 

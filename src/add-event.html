@@ -9,6 +9,18 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 -->
 
 <link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/neon-animation/web-animations.html">
+<link rel="import" href="../bower_components/iron-icons/iron-icons.html">
+<link rel="import" href="../bower_components/iron-form/iron-form.html">
+<link rel="import" href="../bower_components/iron-ajax/iron-ajax.html">
+<link rel="import" href="../bower_components/paper-input/paper-input.html">
+<link rel="import" href="../bower_components/paper-radio-group/paper-radio-group.html">
+<link rel="import" href="../bower_components/paper-radio-button/paper-radio-button.html">
+<link rel="import" href="../bower_components/paper-toast/paper-toast.html">
+<link rel="import" href="../bower_components/paper-dropdown-menu/paper-dropdown-menu.html">
+<link rel="import" href="../bower_components/paper-listbox/paper-listbox.html">
+<link rel="import" href="../bower_components/paper-item/paper-item.html">
+<link rel="import" href="../bower_components/paper-button/paper-button.html">
 <link rel="import" href="shared-styles.html">
 
 <dom-module id="add-event">
@@ -19,20 +31,165 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
         padding: 10px;
       }
+      paper-dropdown-menu{
+        width:100%;
+        white-space: nowrap;
+      }
     </style>
-
-    <div class="card dark">
+  <div class="float-block">
+    <div class="card">
       <div class="circle">
         <iron-icon icon="add"></iron-icon>
       </div>
       <h1>Event Update</h1>
-      
+      <iron-ajax auto url="src/data/data.json" handle-as="json" on-response="_init" debounce-duration="300"></iron-ajax>
+      <iron-form is="iron-form" id="eventForm">
+        <form>
+          <frameset>
+            <input type="hidden" value="{{event.id}}">
+            <table cellpadding="10">
+              <tr>
+                <td>
+                  <div class="inputblock">
+                    <paper-input required allowed-pattern="[0-9]" value="{{event.date}}" auto-validate error$="Value must be between 1 and {{event.maxDate}}" min=1 max="{{event.maxDate}}" label="Enter Date"></paper-input>
+                  </div>
+                </td>
+                <td>
+                  <div class="inputblock">
+                    <paper-dropdown-menu label="Month" on-iron-select="_fetchDays" value="{{event.month}}">
+                      <paper-listbox slot="dropdown-content" name="Month" selected="{{event.monthId}}">
+                        <template is="dom-repeat" items="{{months}}">
+                          <paper-item value="{{item.0}}">{{item.1}}</paper-item>
+                        </template>
+                      </paper-listbox>
+                    </paper-dropdown-menu>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td colspan="2">
+                  <div class="inputblock">
+                    <paper-input required auto-validate value="{{event.name}}" allowed-pattern="[0-9A-Za-z. ]" label="Enter Event Name"></paper-input>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td colspan="2">
+                  <div class="inputblock">
+                      <paper-dropdown-menu label="Event Type" on-iron-select="_setEventType" value="{{event.status}}">
+                        <paper-listbox slot="dropdown-content" name="Event Type" selected="{{event.statusId}}">
+                          <template is="dom-repeat" items="{{type}}">
+                            <paper-item value="{{item}}">{{item}}</paper-item>
+                          </template>
+                        </paper-listbox>
+                      </paper-dropdown-menu>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td colspan="2">
+                  <div class="inputblock">
+                    <paper-input required auto-validate value="{{event.info}}" allowed-pattern="[0-9A-Za-z. ]" label="Enter Event Information"></paper-input>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <paper-button raised on-click="saveEvent">
+                    <iron-icon icon="save"></iron-icon>
+                    <span> Save Event</span>
+                  </paper-button>
+                </td>
+                <td>
+                  <paper-button raised on-click="deleteEvent">
+                    <iron-icon icon="delete"></iron-icon>
+                    <span> Delete Event</span>
+                  </paper-button>
+                </td>
+              </tr>
+            </table>
+            
+          </frameset>
+        </form>
+      </iron-form>
+      <paper-toast id="toast" class="fit-bottom"></paper-toast>
     </div>
+  </div>
   </template>
 
   <script>
     class AddEvent extends Polymer.Element {
       static get is() { return 'add-event'; }
+      static get properties(){
+        return{
+          event:{
+            type:Object,
+            value:{}
+          },
+          type:{
+            type:Array,
+            value:["State Holiday","Celebration at work","National Holiday","Optional Holiday","Complimentary Off"]
+          },
+          months:{
+            type:Array,
+            value:[
+              [1,"January"], [2,"February"], [3,"March"], [4,"April"], [5,"May"], [6,"June"], [7,"July"], [8,"August"], [9,"September"], [10,"October"], [11,"November"], [12,"December"]
+            ]
+          },
+          eventList:{
+            type:Object,
+            value:[]
+          }
+        }
+      }
+      _init(e){
+        this.eventList = e.detail.__data.response;
+        var eventObject = new Object();
+        var stringJson = window.localStorage.eventMonth;
+        //stringJson = stringJson.slice(1, -1);
+        eventObject =  JSON.parse(stringJson);
+        console.log(eventObject);
+        for( var month in this.months){
+          if( this.months[month][1]===eventObject.month ){
+            eventObject.monthId = month;
+            break;
+          }
+        }
+        for(var status in this.type){
+          //debugger;
+          if( this.type[status]===eventObject.status){
+            eventObject.statusId = status;
+            break;
+          }
+        }
+        this.event = eventObject;
+        console.log(this.event);
+      }
+      _fetchDays(e){
+        var d = new Date();
+        var mtNum = new Date(d.getFullYear(), parseInt(e.target.selectedItem.value), 0);
+        this.event.month = parseInt(e.target.selectedItem.value);
+        this.event.maxDate = mtNum.getDate();
+        console.log(this.event.maxDate);
+      }
+      _setEventType(e){
+        this.event.status = e.target.selectedItem.value;
+      }
+      saveEvent(){
+        if(this.$.eventForm.validate() && this.event.date<=this.event.maxDate){
+          this.event.id = 0;
+          console.log(this.event);
+        }else{
+          if( this.event.date>this.event.maxDate || this.event.date<=0 ){
+            this.$.toast.text="Enter a Valid Date";
+            this.$.toast.open();
+          }else{
+            this.$.toast.text="Fields incomplete. Please check again";
+            this.$.toast.open();
+          }
+          
+        }
+      }
     }
 
     window.customElements.define(AddEvent.is, AddEvent);

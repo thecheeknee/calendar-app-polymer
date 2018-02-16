@@ -39,7 +39,8 @@
     "paper-badge": "^2.0.0",
     "iron-ajax": "^2.1.0",
     "iron-icons": "^2.0.1",
-    "promise-polyfill": "PolymerLabs/promise-polyfill#1"
+    "promise-polyfill": "PolymerLabs/promise-polyfill#1",
+    "app-storage": "PolymerElements/app-storage#^2.0.2"
   },
   "resolutions": {
     "polymer": "^2.0.0"
